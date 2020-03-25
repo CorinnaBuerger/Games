@@ -29,7 +29,6 @@ matrix = []
 cell_selected = []
 
 pg.init()
-clock = pg.time.Clock()
 screen = pg.display.set_mode([height, height]) # creates the screen of the game
 
 # loads all images into the game:
@@ -42,21 +41,25 @@ class Cell():
         self.row : int = row
         self.column : int = column
         self.mine : bool = False
+        self.mine_clicked : bool = False
         self.selected : bool = False
         self.flagged : bool = False
         self.num_mines_around : int = 0
-        self.cell_normal = load_images(r'C:\Users\Corinna\Documents\python_coding\minesweeper\normal_cell.gif')
-        self.cell_marked = load_images(r'C:\Users\Corinna\Documents\python_coding\minesweeper\marked_cell.gif')
-        self.cell_mine = load_images(r'C:\Users\Corinna\Documents\python_coding\minesweeper\mine_cell.gif')
+        self.cell_normal = load_images('assets/normal_cell.gif')
+        self.cell_marked = load_images('assets/marked_cell.gif')
+        self.cell_mine = load_images('assets/mine_cell.gif')
+        self.cell_mine_clicked = load_images('assets/exploded_cell.gif')
     
     def show(self):
         global cell_selected
         global matrix
         for n in range(9):
-            cell_selected.append(load_images('C:\\Users\\Corinna\\Documents\\python_coding\\minesweeper\\ms_cell_{}.gif'.format(n)))
+            cell_selected.append(load_images('assets/ms_cell_{}.gif'.format(n)))
         pos = (self.column*square_size, self.row*square_size)
         if self.selected:
-            if self.mine:
+            if self.mine_clicked:
+                screen.blit(self.cell_mine_clicked, pos)
+            elif self.mine:
                 screen.blit(self.cell_mine, pos)
             else:
                 screen.blit(cell_selected[self.num_mines_around], pos)
@@ -80,6 +83,7 @@ class Cell():
         self.selected = False
         self.flagged = False
         self.mine = False
+        self.mine_clicked = False
         self.num_mines_around = 0
 
                     
@@ -148,11 +152,11 @@ def convert_millis(millis):
     seconds =  round((millis / 1000) % 60)
     minutes = round((millis / (1000*60)) % 60)
     time = "{} minutes and {} seconds".format(minutes, seconds)
-    print(millis)
-    print(minutes)
-    print(seconds)
     return time
 
+def explosion_sound():
+        pg.mixer.music.load("assets/Explosion.mp3")
+        pg.mixer.music.play()
 
 def play(matrix):
     play = True
@@ -174,12 +178,14 @@ def play(matrix):
                     if clicked_cell.num_mines_around == 0 and clicked_cell.mine == False:
                         floodfill(clicked_row, clicked_column, matrix)
                     if clicked_cell.mine: # in case I lose
+                        clicked_cell.mine_clicked = True
+                        explosion_sound()
                         print("BOMB!")
                         for obj in matrix:
                             obj.selected = True # show all cells
                         update_screen(matrix)
                         millis_since_play = pg.time.get_ticks() - start_time
-                        tk.messagebox.showinfo(message = "Oh no! You totally fucked up in {}.".format(convert_millis(millis_since_play)))
+                        message_box("You lost!", "Oh no! You totally fucked up in {}.".format(convert_millis(millis_since_play)))
                         message_box("You lost!", "Play again")
                         update_screen(matrix)
                         for obj in matrix:
@@ -189,12 +195,16 @@ def play(matrix):
                     if all_cells_selected(matrix): # in case I win
                         update_screen(matrix)
                         millis_since_play = pg.time.get_ticks() - start_time
-                        tk.messagebox.showinfo(message = "Congrats! This little challenge only took you {}.".format(convert_millis(millis_since_play)))
+                        message_box("You won!", "Congrats! This little challenge only took you {}.".format(convert_millis(millis_since_play)))
                         message_box("You won!", "Play again")
                         for obj in matrix:
                             obj.reset()
                         restart(matrix)
         update_screen(matrix) 
+
+    # perform ordered shutdown:
+    pg.display.quit()
+    message_box("Bye!", "See you later!")
     pg.quit()
 
 def main(matrix):
@@ -205,5 +215,6 @@ def main(matrix):
 
 if __name__ == "__main__":
     main(matrix)
+
 
 # TODO(coco): save high score in a file (with name, time, field size, # of bombs)
